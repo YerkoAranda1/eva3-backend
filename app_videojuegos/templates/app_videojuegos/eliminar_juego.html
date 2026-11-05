@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0b0d13">
+    <title>GameGo · Eliminar videojuego</title>
+    <link rel="stylesheet" href="/static/app_videojuegos/gamego.css">
+</head>
+<body class="app-page">
+
+    <a class="skip-link" href="#contenido">Ir al contenido</a>
+    <aside class="sidebar">
+        <a class="brand" href="/videojuegos/" aria-label="GameGo, ir al inventario"><span class="brand-mark">G<span>+</span></span><span>GAME<span class="brand-accent">GO</span><small>VIDEO GAME MANAGER</small></span></a>
+        <p class="nav-caption">TU ESPACIO</p>
+        <nav class="main-nav" aria-label="Navegación principal">
+            <a class="active" aria-current="page" href="/videojuegos/"><span aria-hidden="true">▦</span> Inventario</a>
+            <a  href="/crear/"><span aria-hidden="true">＋</span> Registrar juego</a>
+        </nav>
+        <div class="sidebar-bottom"><span class="mini-controller" aria-hidden="true">✚</span><p>GameGo<small>Tu colección, bajo control.</small></p></div>
+    </aside>
+    <div class="workspace">
+        <header class="topbar"><p>GameGo <span>/</span> <strong>Eliminar juego</strong></p><div class="session-tools"><span class="avatar" aria-hidden="true">GG</span><button id="btnSalir" class="button button-ghost" type="button">Cerrar sesión <span aria-hidden="true">↗</span></button></div></header>
+        <main id="contenido" class="content"><a class="back-link" href="/videojuegos/">← Volver al inventario</a><section class="page-heading"><div><p class="eyebrow"><span></span>GESTIÓN DEL CATÁLOGO</p><h1>Eliminar videojuego</h1><p class="lead">Revisa el título antes de confirmar esta acción.</p></div></section><section class="panel delete-panel"><div class="danger-emblem" aria-hidden="true">!</div><span class="danger-chip">ACCIÓN PERMANENTE</span><h2>¿Retirar este juego del catálogo?</h2><p class="lead">Vas a eliminar el siguiente videojuego:</p><div class="delete-game"><span aria-hidden="true">✚</span><strong id="titulo">Cargando título...</strong></div><p class="delete-warning">El registro se eliminará del inventario. Esta acción no se puede deshacer.</p><p id="mensaje" class="message" role="status" aria-live="polite">Cargando videojuego...</p><div class="delete-actions"><a href="/videojuegos/" class="button button-secondary">Conservar videojuego</a><button type="button" id="btnEliminar" class="button button-danger" disabled>Sí, eliminar videojuego <span aria-hidden="true">×</span></button></div></section></main>
+        <footer class="footer"><span>GAMEGO <span class="footer-dot">/</span> GESTIÓN DE VIDEOJUEGOS</span><span>PC · PLAYSTATION · XBOX · NINTENDO</span></footer>
+    </div>
+<script>
+        const token = sessionStorage.getItem('token');
+        const partesURL = window.location.pathname.split('/').filter(Boolean);
+        const juegoId = partesURL[partesURL.length - 1];
+        const btnEliminar = document.getElementById('btnEliminar');
+        const mensaje = document.getElementById('mensaje');
+
+        btnEliminar.addEventListener('click', async function() {
+            if (!token) {
+                window.location.href = '/';
+                return;
+            }
+
+            const confirmar = confirm(
+                '¿Realmente deseas eliminar esta juego?'
+            );
+
+            if (!confirmar) {
+                return;
+            }
+
+            btnEliminar.disabled = true;
+            mensaje.textContent = 'Eliminando juego...';
+
+            try {
+                const respuesta = await fetch(
+                    `/api/videojuegos/${juegoId}/`,
+                    {
+                        method: 'DELETE',
+                        headers: {
+                            'Authorization': `Token ${token}`
+                        }
+                    }
+                );
+
+                if (respuesta.status === 401 ||
+                    respuesta.status === 403) {
+                    sessionStorage.removeItem('token');
+                    window.location.href = '/';
+                    return;
+                }
+
+                if (!respuesta.ok) {
+                    throw new Error(
+                        `No se pudo eliminar el videojuego. HTTP ${respuesta.status}`
+                    );
+                }
+
+                // DELETE puede responder con HTTP 204 sin contenido.
+                mensaje.textContent = 'Juego eliminada correctamente.';
+
+                window.location.href = '/videojuegos/';
+
+            } catch (error) {
+                console.error(error);
+                mensaje.textContent = error.message;
+                btnEliminar.disabled = false;
+            }
+        });
+    
+        async function cargarDetalle() {
+            if (!token) {
+                window.location.href = '/';
+                return;
+            }
+
+            try {
+                const respuesta = await fetch(
+                    `/api/videojuegos/${juegoId}/`,
+                    {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Token ${token}`
+                        }
+                    }
+                );
+
+                if (respuesta.status === 401 ||
+                    respuesta.status === 403) {
+                    sessionStorage.removeItem('token');
+                    window.location.href = '/';
+                    return;
+                }
+
+                if (!respuesta.ok) {
+                    throw new Error(
+                        `No se pudo consultar el videojuego. HTTP ${respuesta.status}`
+                    );
+                }
+
+                const juego = await respuesta.json();
+
+                document.getElementById('titulo').textContent = juego.titulo;
+                btnEliminar.disabled = false;
+                mensaje.textContent = '';
+
+            } catch (error) {
+                console.error(error);
+                mensaje.textContent = error.message;
+            }
+        }
+
+        cargarDetalle();
+    </script>
+<script>
+    // Agregado para la rúbrica: revocar el token y volver al login.
+    document.getElementById('btnSalir').addEventListener('click', async function() {
+        const token = sessionStorage.getItem('token');
+        if (!token) {
+            window.location.href = '/';
+            return;
+        }
+        try {
+            const respuesta = await fetch('/api/logout/', {
+                method: 'POST',
+                headers: {'Authorization': `Token ${token}`}
+            });
+            if (respuesta.ok || respuesta.status === 401 || respuesta.status === 403) {
+                sessionStorage.removeItem('token');
+                window.location.href = '/';
+            } else {
+                document.getElementById('mensaje').textContent = 'No se pudo cerrar la sesión. Intenta nuevamente.';
+            }
+        } catch (error) {
+            document.getElementById('mensaje').textContent = 'No se pudo conectar para cerrar la sesión. Intenta nuevamente.';
+        }
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0b0d13">
+    <title>GameGo · Editar videojuego</title>
+    <link rel="stylesheet" href="/static/app_videojuegos/gamego.css">
+</head>
+<body class="app-page">
+
+    <a class="skip-link" href="#contenido">Ir al contenido</a>
+    <aside class="sidebar">
+        <a class="brand" href="/videojuegos/" aria-label="GameGo, ir al inventario"><span class="brand-mark">G<span>+</span></span><span>GAME<span class="brand-accent">GO</span><small>VIDEO GAME MANAGER</small></span></a>
+        <p class="nav-caption">TU ESPACIO</p>
+        <nav class="main-nav" aria-label="Navegación principal">
+            <a class="active" aria-current="page" href="/videojuegos/"><span aria-hidden="true">▦</span> Inventario</a>
+            <a  href="/crear/"><span aria-hidden="true">＋</span> Registrar juego</a>
+        </nav>
+        <div class="sidebar-bottom"><span class="mini-controller" aria-hidden="true">✚</span><p>GameGo<small>Tu colección, bajo control.</small></p></div>
+    </aside>
+    <div class="workspace">
+        <header class="topbar"><p>GameGo <span>/</span> <strong>Editar juego</strong></p><div class="session-tools"><span class="avatar" aria-hidden="true">GG</span><button id="btnSalir" class="button button-ghost" type="button">Cerrar sesión <span aria-hidden="true">↗</span></button></div></header>
+        <main id="contenido" class="content"><a class="back-link" href="/videojuegos/">← Volver al inventario</a><section class="page-heading"><div><p class="eyebrow"><span></span>PLAYER MANAGEMENT</p><h1>Editar videojuego</h1><p class="lead">Actualiza la información y guarda los cambios en tu catálogo.</p></div></section><div class="form-layout"><section class="panel form-panel"><div class="panel-heading"><div><span class="section-dot"></span><h2>Información del juego</h2></div><span class="muted small">Todos los campos son obligatorios</span></div><p id="mensaje" class="message" role="status" aria-live="polite">Cargando videojuego...</p><form id="formEditar" class="game-form" hidden><div class="field-grid"><div class="field field-wide"><label for="titulo">Título del videojuego <span>*</span></label><input id="titulo" name="titulo" type="text" placeholder="Ej. Hollow Knight" maxlength="30" required></div><div class="field "><label for="plataforma">Plataforma <span>*</span></label><input id="plataforma" name="plataforma" type="text" placeholder="Ej. PC, PS5, Nintendo Switch" maxlength="30" required></div><div class="field "><label for="genero">Género <span>*</span></label><input id="genero" name="genero" type="text" placeholder="Ej. Aventura, RPG, Acción" maxlength="30" required></div><div class="field "><label for="precio">Precio ($) <span>*</span></label><input id="precio" name="precio" type="text" inputmode="numeric" pattern="[0-9]+" maxlength="10" placeholder="Ej. 29990" required></div><div class="field "><label for="stock">Stock disponible <span>*</span></label><input id="stock" name="stock" type="text" inputmode="numeric" pattern="[0-9]+" maxlength="10" placeholder="Ej. 10" required></div><div class="field "><label for="fecha_estreno">Fecha de estreno <span>*</span></label><input id="fecha_estreno" name="fecha_estreno" type="date" placeholder="" min="1000-01-01" max="9999-12-31" required></div></div><div class="form-actions"><a href="/videojuegos/" class="button button-secondary">Cancelar</a><button class="button button-primary" type="submit">Guardar cambios <span aria-hidden="true">→</span></button></div></form></section><aside class="form-aside"><div class="aside-art" aria-hidden="true">✚</div><p class="eyebrow">GAMEGO / CATÁLOGO</p><h2>Ajusta los detalles.</h2><p>Un inventario actualizado hace más fácil encontrar cada juego y conocer su disponibilidad.</p><div class="aside-rule"></div><p class="small">Precio en números enteros.<br>Stock desde cero unidades.<br>Fecha de estreno del videojuego.</p></aside></div></main>
+        <footer class="footer"><span>GAMEGO <span class="footer-dot">/</span> GESTIÓN DE VIDEOJUEGOS</span><span>PC · PLAYSTATION · XBOX · NINTENDO</span></footer>
+    </div>
+<script>
+        const token = sessionStorage.getItem('token');
+
+        // Obtenemos el ID desde la URL /editar/5/
+        const partesURL = window.location.pathname
+            .split('/')
+            .filter(Boolean);
+
+        const juegoId = partesURL[partesURL.length - 1];
+
+        const formulario = document.getElementById('formEditar');
+        const campoTitulo = document.getElementById('titulo');
+        const campoPlataforma = document.getElementById('plataforma');
+        const campoGenero = document.getElementById('genero');
+        const campoPrecio = document.getElementById('precio');
+        const campoStock = document.getElementById('stock');
+        const campoFechaEstreno = document.getElementById('fecha_estreno');
+        const mensaje = document.getElementById('mensaje');
+
+        // Consultar el videojuego y cargar los datos en el formulario.
+        async function cargarJuego() {
+            if (!token) {
+                window.location.href = '/';
+                return;
+            }
+
+            try {
+                const respuesta = await fetch(
+                    `/api/videojuegos/${juegoId}/`,
+                    {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Token ${token}`
+                        }
+                    }
+                );
+
+                if (respuesta.status === 401 ||
+                    respuesta.status === 403) {
+                    sessionStorage.removeItem('token');
+                    window.location.href = '/';
+                    return;
+                }
+
+                if (!respuesta.ok) {
+                    throw new Error(
+                        `No se pudo cargar el videojuego. HTTP ${respuesta.status}`
+                    );
+                }
+
+                const juego = await respuesta.json();
+
+                campoTitulo.value = juego.titulo;
+                campoPlataforma.value = juego.plataforma;
+                campoGenero.value = juego.genero;
+                campoPrecio.value = juego.precio;
+                campoStock.value = juego.stock;
+                campoFechaEstreno.value = juego.fecha_estreno;
+
+                formulario.hidden = false;
+                mensaje.textContent = `Editando juego #${juego.id}`;
+
+            } catch (error) {
+                console.error(error);
+                mensaje.textContent = error.message;
+            }
+        }
+
+        // PUT: enviar todos los campos de el videojuego.
+        formulario.addEventListener('submit', async function(evento) {
+            evento.preventDefault();
+
+            const datos = {
+                titulo: campoTitulo.value.trim(),
+                plataforma: campoPlataforma.value.trim(),
+                genero: campoGenero.value.trim(),
+                precio: campoPrecio.value.trim(),
+                stock: campoStock.value.trim(),
+                fecha_estreno: campoFechaEstreno.value.trim(),
+            };
+
+            await enviarActualizacion('PUT', datos);
+        });
+
+        async function enviarActualizacion(metodo, datos) {
+            mensaje.textContent = 'Guardando cambios...';
+
+            try {
+                const respuesta = await fetch(
+                    `/api/videojuegos/${juegoId}/`,
+                    {
+                        method: metodo,
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Token ${token}`
+                        },
+                        body: JSON.stringify(datos)
+                    }
+                );
+
+                if (respuesta.status === 401 ||
+                    respuesta.status === 403) {
+                    sessionStorage.removeItem('token');
+                    window.location.href = '/';
+                    return;
+                }
+
+                if (!respuesta.ok) {
+                    const error = await respuesta.json();
+                    throw new Error(
+                        error.error || error.mensaje ||
+                        `Error HTTP ${respuesta.status}`
+                    );
+                }
+
+                mensaje.textContent =
+                    'Videojuego actualizado correctamente.';
+
+                // Redirigir después de mostrar el resultado.
+                window.location.href = '/videojuegos/';
+
+            } catch (error) {
+                console.error(error);
+                mensaje.textContent = error.message;
+            }
+        }
+
+        cargarJuego();
+    </script>
+<script>
+    // Agregado para la rúbrica: revocar el token y volver al login.
+    document.getElementById('btnSalir').addEventListener('click', async function() {
+        const token = sessionStorage.getItem('token');
+        if (!token) {
+            window.location.href = '/';
+            return;
+        }
+        try {
+            const respuesta = await fetch('/api/logout/', {
+                method: 'POST',
+                headers: {'Authorization': `Token ${token}`}
+            });
+            if (respuesta.ok || respuesta.status === 401 || respuesta.status === 403) {
+                sessionStorage.removeItem('token');
+                window.location.href = '/';
+            } else {
+                document.getElementById('mensaje').textContent = 'No se pudo cerrar la sesión. Intenta nuevamente.';
+            }
+        } catch (error) {
+            document.getElementById('mensaje').textContent = 'No se pudo conectar para cerrar la sesión. Intenta nuevamente.';
+        }
+    });
+</script>
+
+<script>
+    // Restricciones del formulario: el servidor vuelve a validar al guardar.
+    for (const nombreCampo of ['precio', 'stock']) {
+        const campo = document.getElementById(nombreCampo);
+
+        campo.addEventListener('beforeinput', function(evento) {
+            if (evento.data && /[^0-9]/.test(evento.data)) {
+                evento.preventDefault();
+            }
+        });
+
+        campo.addEventListener('paste', function(evento) {
+            const texto = evento.clipboardData.getData('text');
+            if (/[^0-9]/.test(texto)) {
+                evento.preventDefault();
+            }
+        });
+
+        campo.addEventListener('input', function() {
+            const numero = Number(campo.value);
+            if (campo.value && (!/^[0-9]+$/.test(campo.value) || numero > 2147483647 ||
+                (nombreCampo === 'precio' && numero < 1))) {
+                campo.setCustomValidity(nombreCampo === 'precio'
+                    ? 'Ingresa un precio entero entre 1 y 2147483647, sin puntos ni signos.'
+                    : 'Ingresa un stock entero entre 0 y 2147483647, sin puntos ni signos.');
+            } else {
+                campo.setCustomValidity('');
+            }
+        });
+    }
+
+    for (const nombreCampo of ['titulo', 'plataforma', 'genero']) {
+        const campo = document.getElementById(nombreCampo);
+        campo.addEventListener('input', function() {
+            campo.setCustomValidity(campo.value && !campo.value.trim()
+                ? 'Este campo no puede contener solamente espacios.' : '');
+        });
+    }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0b0d13">
+    <title>GameGo · Inventario</title>
+    <link rel="stylesheet" href="/static/app_videojuegos/gamego.css">
+</head>
+<body class="app-page">
+
+    <a class="skip-link" href="#contenido">Ir al contenido</a>
+    <aside class="sidebar">
+        <a class="brand" href="/videojuegos/" aria-label="GameGo, ir al inventario"><span class="brand-mark">G<span>+</span></span><span>GAME<span class="brand-accent">GO</span><small>VIDEO GAME MANAGER</small></span></a>
+        <p class="nav-caption">TU ESPACIO</p>
+        <nav class="main-nav" aria-label="Navegación principal">
+            <a class="active" aria-current="page" href="/videojuegos/"><span aria-hidden="true">▦</span> Inventario</a>
+            <a  href="/crear/"><span aria-hidden="true">＋</span> Registrar juego</a>
+        </nav>
+        <div class="sidebar-bottom"><span class="mini-controller" aria-hidden="true">✚</span><p>GameGo<small>Tu colección, bajo control.</small></p></div>
+    </aside>
+    <div class="workspace">
+        <header class="topbar"><p>GameGo <span>/</span> <strong>Inventario</strong></p><div class="session-tools"><span class="avatar" aria-hidden="true">GG</span><button id="btnSalir" class="button button-ghost" type="button">Cerrar sesión <span aria-hidden="true">↗</span></button></div></header>
+        <main id="contenido" class="content"><section class="page-heading"><div><p class="eyebrow"><span></span>CONTROL CENTER</p><h1>Biblioteca de videojuegos</h1><p class="lead">Administra los títulos, precios y existencias de tu catálogo.</p></div><a href="/crear/" class="button button-primary"><span aria-hidden="true">＋</span> Registrar juego</a></section><div class="collection-banner"><div><span class="banner-icon" aria-hidden="true">✚</span><div><span class="eyebrow">TU CATÁLOGO</span><h2>Todos tus juegos, listos para gestionar.</h2><p>Consulta cada ficha o actualiza tu inventario desde aquí.</p></div></div><span class="platform-label">MULTIPLATAFORMA <span aria-hidden="true">↗</span></span></div>
+    <section class="panel"><div class="panel-heading"><div><span class="section-dot"></span><h2>Inventario</h2></div><span class="muted small">Listado de videojuegos</span></div><p id="mensaje" class="message table-message" role="status" aria-live="polite">Cargando videojuegos...</p><div class="table-scroll" role="region" aria-label="Tabla de videojuegos" tabindex="0"><table><thead><tr><th scope="col">ID</th><th scope="col">Título</th><th scope="col">Plataforma</th><th scope="col">Género</th><th scope="col">Precio ($)</th><th scope="col">Stock</th><th scope="col">Estreno</th><th scope="col">Acciones</th></tr></thead><tbody id="lista-juegos"></tbody></table></div></section></main>
+        <footer class="footer"><span>GAMEGO <span class="footer-dot">/</span> GESTIÓN DE VIDEOJUEGOS</span><span>PC · PLAYSTATION · XBOX · NINTENDO</span></footer>
+    </div>
+<script>
+    const listaJuegos = document.getElementById('lista-juegos');
+    const mensaje = document.getElementById('mensaje');
+
+    async function cargarJuegos() {
+
+        // Recuperar el token guardado durante el login
+        const token = sessionStorage.getItem('token');
+
+        // Comprobar si existe un token
+        if (!token) {
+            mensaje.textContent = 'Debes iniciar sesión para ver tus juegos.';
+            window.location.href = '/';
+            return;
+        }
+
+        try {
+            // Consultar la API GET enviando el token
+            const respuesta = await fetch('/api/videojuegos/', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Token ${token}`
+                }
+            });
+
+            // Si la autenticación falla, volver al login
+            if (respuesta.status === 401 || respuesta.status === 403) {
+                sessionStorage.removeItem('token');
+                window.location.href = '/';
+                return;
+            }
+
+            if (!respuesta.ok) {
+                mensaje.textContent = 'Error al consultar los videojuegos.';
+                return;
+            }
+
+            // Convertir la respuesta JSON a un arreglo de JavaScript
+            const juegos = await respuesta.json();
+
+            // Limpiar el contenedor antes de mostrar los resultados
+            listaJuegos.replaceChildren();
+
+            if (juegos.length === 0) {
+                mensaje.textContent = 'No existen videojuegos registrados.';
+                return;
+            }
+
+            mensaje.textContent = '';
+
+            // Crear una tarjeta para cada juego recibida
+            juegos.forEach(juego => {
+
+                const tarjeta = document.createElement('tr');
+                const celdaId = document.createElement('td');
+                celdaId.textContent = juego.id;
+                tarjeta.appendChild(celdaId);
+                const celdaTitulo = document.createElement('td');
+                celdaTitulo.textContent = juego.titulo;
+                tarjeta.appendChild(celdaTitulo);
+                const celdaPlataforma = document.createElement('td');
+                celdaPlataforma.textContent = juego.plataforma;
+                tarjeta.appendChild(celdaPlataforma);
+                const celdaGenero = document.createElement('td');
+                celdaGenero.textContent = juego.genero;
+                tarjeta.appendChild(celdaGenero);
+                const celdaPrecio = document.createElement('td');
+                celdaPrecio.textContent = juego.precio;
+                tarjeta.appendChild(celdaPrecio);
+                const celdaStock = document.createElement('td');
+                celdaStock.textContent = juego.stock;
+                tarjeta.appendChild(celdaStock);
+                const celdaFechaEstreno = document.createElement('td');
+                celdaFechaEstreno.textContent = juego.fecha_estreno;
+                tarjeta.appendChild(celdaFechaEstreno);
+                const botones = document.createElement('td');
+                const enlaceDetalle = document.createElement('a');
+                enlaceDetalle.href = `/detalle/${juego.id}/`;
+                enlaceDetalle.textContent = 'Ver';
+                enlaceDetalle.className = 'btn btn-info btn-sm m-1';
+                botones.appendChild(enlaceDetalle);
+                const enlaceEditar = document.createElement('a');
+                enlaceEditar.href = `/editar/${juego.id}/`;
+                enlaceEditar.textContent = 'Editar';
+                enlaceEditar.className = 'btn btn-warning btn-sm m-1';
+                botones.appendChild(enlaceEditar);
+                const enlaceEliminar = document.createElement('a');
+                enlaceEliminar.href = `/eliminar/${juego.id}/`;
+                enlaceEliminar.textContent = 'Eliminar';
+                enlaceEliminar.className = 'btn btn-danger btn-sm m-1';
+                botones.appendChild(enlaceEliminar);
+                tarjeta.appendChild(botones);
+                listaJuegos.appendChild(tarjeta);
+            });
+
+        } catch (error) {
+            mensaje.textContent =
+                'No se pudo conectar con el servidor.';
+            console.error('Error al cargar juegos:', error);
+        }
+    }
+
+    // Ejecutar la consulta al cargar la página
+    cargarJuegos();
+</script>
+<script>
+    // Agregado para la rúbrica: revocar el token y volver al login.
+    document.getElementById('btnSalir').addEventListener('click', async function() {
+        const token = sessionStorage.getItem('token');
+        if (!token) {
+            window.location.href = '/';
+            return;
+        }
+        try {
+            const respuesta = await fetch('/api/logout/', {
+                method: 'POST',
+                headers: {'Authorization': `Token ${token}`}
+            });
+            if (respuesta.ok || respuesta.status === 401 || respuesta.status === 403) {
+                sessionStorage.removeItem('token');
+                window.location.href = '/';
+            } else {
+                document.getElementById('mensaje').textContent = 'No se pudo cerrar la sesión. Intenta nuevamente.';
+            }
+        } catch (error) {
+            document.getElementById('mensaje').textContent = 'No se pudo conectar para cerrar la sesión. Intenta nuevamente.';
+        }
+    });
+</script>
+</body>
+</html>
